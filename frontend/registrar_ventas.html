@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Ventas</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: hsl(120, 91%, 25%);
+            color: white;
+            text-align: center;
+            padding: 5px;
+            font-size: 18px;
+        }
+        main {
+            width: 80%;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: hsl(128, 75%, 43%);
+        }
+        
+        form label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        
+ 
+        </style>
+</head>
+<body>
+    <header>
+        <h1>Registrar Ventas</h1>
+    </header>
+    <main>
+        <form id="venta-form">
+            <label for="producto">Producto:</label>
+            <input type="text" id="producto" placeholder="Nombre del producto" required>
+
+            <label for="cantidad">Cantidad:</label>
+            <input type="number" id="cantidad" placeholder="Cantidad vendida" required>
+
+            <label for="precio">Precio:</label>
+            <input type="number" id="precio" step="0.01" placeholder="Precio unitario" required>
+
+            <button type="submit">Registrar Venta</button>
+        </form>
+    </main>
+
+    <script>
+        const apiUrl = "http://localhost:5000"; // URL de tu backend
+
+        // Función para manejar el envío del formulario
+        document.getElementById('venta-form').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Evita que el formulario se envíe de la manera tradicional
+
+            // Obtener los valores del formulario
+            const producto = document.getElementById('producto').value;
+            const cantidad = parseFloat(document.getElementById('cantidad').value);
+            const precio = parseFloat(document.getElementById('precio').value);
+
+            // Crear el objeto de datos para enviar a la API
+            const data = {
+                productos: [
+                    {
+                        nombre: producto,
+                        cantidad: cantidad,
+                        precio: precio
+                    }
+                ],
+                total: cantidad * precio // Calcular el total de la venta
+            };
+                console.log(data);
+            try {
+                // Enviar los datos a la API
+                const response = await fetch(`${apiUrl}/ventas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                // Verificar si la respuesta es exitosa
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message || "Venta registrada con éxito");
+                    // Limpiar el formulario después de enviar
+                    document.getElementById('venta-form').reset();
+                } else {
+                    throw new Error("Error al registrar la venta");
+                }
+            } catch (error) {
+                alert("Error al enviar la venta");
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
+
+

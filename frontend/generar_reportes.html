@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        header {
+            background-color: hsl(120, 91%, 25%);
+            color: white;
+            text-align: center;
+            padding: 5px;
+            font-size: 18px;
+        }
+        main {
+            padding: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+        .dashboard-section {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .dashboard-section h2 {
+            margin-top: 0;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .full-width {
+            grid-column: span 2;
+        }
+        .card {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f9;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Reportes</h1>
+    </header>
+    <main>
+        <!-- Formulario para generar reportes -->
+        <form id="reporte-form" class="dashboard-section">
+            <label for="fecha-inicio">Fecha y Hora de Inicio:</label>
+            <input type="datetime-local" id="fecha-inicio" required>
+
+            <label for="fecha-fin">Fecha y Hora de Fin:</label>
+            <input type="datetime-local" id="fecha-fin" required>
+
+            <button type="submit">Generar</button>
+        </form>
+
+        <!-- Sección de resultados -->
+        <section id="resultados" style="display:none;">
+            <div class="dashboard-grid">
+                <!-- Gráfico de Ventas -->
+                <div class="dashboard-section">
+                    <h2>Ventas</h2>
+                    <canvas id="ventas-chart"></canvas>
+                </div>
+
+                <!-- Ganancias Totales -->
+                <div class="dashboard-section">
+                    <h2>Ganancias Totales</h2>
+                    <div id="ganancias-card" class="card">$0.00</div>
+                </div>
+
+                <!-- Inventario (Full width) -->
+                <div class="dashboard-section full-width">
+                    <h2>Inventario</h2>
+                    <table id="inventario-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Cantidad</th>
+                                <th>Precio</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const apiUrl = "http://localhost:5000";
+        let ventasChart = null;
+
+        document.getElementById('reporte-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const fecha_inicio = document.getElementById('fecha-inicio').value;
+            const fecha_fin = document.getElementById('fecha-fin').value;
+
+            const data = { fecha_inicio, fecha_fin };
+
+            try {
+                const [ventasRes, gananciasRes, inventarioRes] = await Promise.all([
+                    fetch(`${apiUrl}/reportes`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...data, tipo_reporte: 'ventas' })
+                    }),
+                    fetch(`${apiUrl}/reportes`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...data, tipo_reporte: 'ganancias' })
+                    }),
+                    fetch(`${apiUrl}/reportes`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...data, tipo_reporte: 'inventario' })
+                    })
+                ]);
+
+                const [ventas, ganancias, inventario] = await Promise.all([
+                    ventasRes.ok ? ventasRes.json() : null,
+                    gananciasRes.ok ? gananciasRes.json() : null,
+                    inventarioRes.ok ? inventarioRes.json() : null
+                ]);
+
+                document.getElementById('resultados').style.display = 'block';
+                if (ventas) actualizarGraficoVentas(ventas);
+                if (ganancias) actualizarGanancias(ganancias);
+                if (inventario) actualizarInventario(inventario);
+            } catch (error) {
+                console.error("Error al obtener los reportes:", error);
+            }
+        });
+
+        function actualizarGraficoVentas(ventas) {
+            const ctx = document.getElementById('ventas-chart').getContext('2d');
+            if (ventasChart) ventasChart.destroy();
+            ventasChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ventas.map(v => new Date(v.fecha).toLocaleString()),
+                    datasets: [{
+                        label: 'Monto de Ventas',
+                        data: ventas.map(v => parseFloat(v.total)),
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function actualizarGanancias(ganancias) {
+            document.getElementById('ganancias-card').textContent = `$${ganancias.ganancias}`;
+        }
+
+        function actualizarInventario(inventario) {
+            const tbody = document.querySelector('#inventario-table tbody');
+            tbody.innerHTML = '';
+            inventario.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${item.id}</td><td>${item.nombre}</td><td>${item.cantidad}</td><td>$${item.precio}</td>`;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
