@@ -1,2 +1,1 @@
-Inicializar con: docker compose build
-                :docker compose up
+Inicializar con: docker compose build y docker compose up
